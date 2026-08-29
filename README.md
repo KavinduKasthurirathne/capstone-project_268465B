@@ -1,1 +1,3 @@
-# capstone-project_268465B
+# Capstone Project
+## Index No: 268465B
+## Name: Kavindu Kasthurirathne
