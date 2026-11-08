@@ -1,0 +1,41 @@
+# Fraud Detection Under Analyst Capacity Limits (CS5998, 268465B)
+# Python 3.11  |  install: pip install -r requirements.txt
+
+# --- Data access ---
+kaggle==1.7.4.5               # Kaggle API: competition download script
+
+# --- Core data handling ---
+numpy==2.2.6
+pandas==2.2.3
+pyarrow==20.0.0               # parquet cache for preprocessed float32 tables
+
+# --- Modelling ---
+scikit-learn==1.6.1           # logistic baseline, IsolationForest, calibration, metrics
+lightgbm==4.6.0               # improved model (CPU)
+optuna==4.2.1                 # hyperparameter tuning on block 4
+
+# --- Statistics ---
+scipy==1.15.3                 # bootstrap CIs, paired tests (wilcoxon, ttest_rel)
+statsmodels==0.14.4           # McNemar test, extra inference tools
+
+# --- Explainability ---
+shap==0.47.2                  # TreeSHAP, grouped by feature family
+
+# --- Visualisation & dashboard ---
+matplotlib==3.10.3
+seaborn==0.13.2
+plotly==6.1.2
+streamlit==1.45.1             # decision-support dashboard
+
+# --- Utilities ---
+pyyaml==6.0.2                 # config files (block boundaries, budgets, costs, seeds)
+tqdm==4.67.1
+joblib==1.4.2                 # saving models and artefacts
+
+# --- Notebooks (EDA) ---
+ipykernel==6.29.5
+jupyterlab==4.3.5
+
+# --- Testing & code quality ---
+pytest==8.3.5                 # automated leakage check (train timestamps < test timestamps)
+ruff==0.9.4

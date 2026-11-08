@@ -1,0 +1,63 @@
+# ===== Data (never commit raw Kaggle files) =====
+data/*
+!data/.gitkeep
+!data/README.md
+*.zip
+train_transaction.csv
+train_identity.csv
+test_transaction.csv
+test_identity.csv
+sample_submission.csv
+*.parquet
+*.feather
+
+# ===== Credentials & secrets =====
+kaggle.json
+.kaggle/
+.env
+.env.*
+.streamlit/secrets.toml
+
+# ===== Models & artefacts =====
+models/*
+!models/.gitkeep
+*.pkl
+*.joblib
+*.lgb
+*.db
+*.sqlite3
+
+# ===== Logs =====
+logs/
+*.log
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# ===== Virtual environments =====
+.venv/
+venv/
+env/
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+
+# ===== Testing / linting caches =====
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ===== IDE / tools =====
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# ===== OS =====
+Thumbs.db
+desktop.ini
+.DS_Store
