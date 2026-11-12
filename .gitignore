@@ -2,6 +2,7 @@
 data/*
 !data/.gitkeep
 !data/README.md
+CLAUDE.md
 *.zip
 train_transaction.csv
 train_identity.csv
