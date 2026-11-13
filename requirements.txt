@@ -4,6 +4,7 @@
 
 numpy==2.2.6                  # arrays, seeding
 pyyaml==6.0.2                 # reads configs/config.yaml
+pandas==2.2.3                 # tables: read CSVs, downcast, join
 
 # --- Testing ---
 pytest==8.3.5

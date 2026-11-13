@@ -2,7 +2,7 @@
 
 Evaluating fraud detection models by daily alert budget, monetary savings and performance drift.
 
-**CS5998 Capstone Project** | MSc Data Science & Artificial Intelligence
+**CS5998 Capstone Project** | Master of Data Science & Artificial Intelligence
 **Author:** K.K.I. Kasthurirathne (268465B)
 **Supervisor:** Dr. Sandareka Wickramanayake
 **Status:** Milestone 2 (Technical Checkpoint) in progress
