@@ -5,7 +5,7 @@ Evaluating fraud detection models by daily alert budget, monetary savings and pe
 **CS5998 Capstone Project** | MSc Data Science & Artificial Intelligence
 **Author:** K.K.I. Kasthurirathne (268465B)
 **Supervisor:** Dr. Sandareka Wickramanayake
-**Status:** Milestone 1 (Project Definition)
+**Status:** Milestone 2 (Technical Checkpoint) in progress
 
 ---
 
@@ -17,7 +17,7 @@ Evaluating fraud detection models by daily alert budget, monetary savings and pe
 | Data type | Tabular, time-stamped transactions |
 | Technique category | Supervised ML + unsupervised anomaly detection |
 | System context | End-to-end pipeline, comparative analysis, decision-support dashboard |
-| External LLM used | **None** |
+| LLM used inside the system | **None** |
 
 ---
 
@@ -74,7 +74,7 @@ This project builds a complete fraud detection pipeline and evaluates it the way
 
 ## Milestones
 
-- [ ] **Milestone 1** (Week 4, 25%) Project Definition
+- [x] **Milestone 1** (Week 4, 25%) Project Definition
 - [ ] **Milestone 2** (Week 8, 25%) Technical Checkpoint: preprocessing, EDA, baseline + improved model, architecture diagram, demo video
 - [ ] **Milestone 3** (Week 12, 50%) Final report, code, reproducibility checklist
 
