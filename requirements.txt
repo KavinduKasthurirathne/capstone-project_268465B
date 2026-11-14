@@ -5,6 +5,7 @@
 numpy==2.2.6                  # arrays, seeding
 pyyaml==6.0.2                 # reads configs/config.yaml
 pandas==2.2.3                 # tables: read CSVs, downcast, join
+pyarrow==20.0.0               # parquet read/write for the cached tables
 
 # --- Testing ---
 pytest==8.3.5

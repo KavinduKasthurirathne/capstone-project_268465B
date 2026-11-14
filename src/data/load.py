@@ -5,12 +5,20 @@ test files have no labels and are never used.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pandas as pd
 
+logger = logging.getLogger(__name__)
+
 # Column shared by both tables. It is a fixed name in the dataset, not a setting.
 KEY = "TransactionID"
+
+
+def megabytes(df: pd.DataFrame) -> float:
+    """Memory used by a table in MB. deep=True counts the text inside text columns."""
+    return df.memory_usage(deep=True).sum() / 1024**2
 
 
 def downcast(df: pd.DataFrame) -> pd.DataFrame:
@@ -26,8 +34,16 @@ def downcast(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def read_table(path: str | Path) -> pd.DataFrame:
-    """Read one CSV and downcast it straight away, before any join."""
-    return downcast(pd.read_csv(path))
+    """Read one CSV and downcast it straight away, before any join.
+
+    Memory is logged before and after so the saving from downcasting is visible.
+    """
+    df = pd.read_csv(path)
+    before = megabytes(df)
+    df = downcast(df)
+    logger.info("%s: %d rows x %d columns, %.0f MB -> %.0f MB",
+                Path(path).name, len(df), df.shape[1], before, megabytes(df))
+    return df
 
 
 def merge_tables(transactions: pd.DataFrame, identity: pd.DataFrame) -> pd.DataFrame:

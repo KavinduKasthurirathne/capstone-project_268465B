@@ -14,3 +14,4 @@ paths:
 files:
   transaction: train_transaction.csv
   identity: train_identity.csv
+  merged: train_merged.parquet    # written to interim_dir by src/data/make_dataset.py
