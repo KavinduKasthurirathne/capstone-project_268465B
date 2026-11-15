@@ -36,7 +36,7 @@ public GitHub repo, demo video (max 6 minutes).
 ## Phase 2: Time split (1 session)
 | Step | Goal | Files | Checks | Commit | Done |
 |---|---|---|---|---|---|
-| 2.1 | 30-day blocks with the trailing partial block dropped; train on blocks 1–3 and tune on block 4 with a 7-day gap; leakage check; stage 1 also saves the blocked parquet | src/data/split.py, src/data/make_dataset.py, tests/test_split.py | Synthetic tests: block spans, gap respected, leak detector fires on a future row; the real-data split passes | `feat(data): add 30-day blocks and gap-aware split with leakage test` | [ ] |
+| 2.1 | 30-day blocks with the trailing partial block dropped; train on blocks 1–3 and tune on block 4 with a 7-day gap; leakage check; stage 1 also saves the blocked parquet | src/data/split.py, src/data/make_dataset.py, configs/config.yaml, tests/test_split.py, tests/test_make_dataset.py | Synthetic tests: block spans, gap respected, leak detector fires on a future row; the real-data split passes | `feat(data): add 30-day blocks and gap-aware split with leakage test` | [x] |
 
 ## Phase 3: EDA (1–2 sessions)
 | Step | Goal | Files | Checks | Commit | Done |
@@ -95,6 +95,7 @@ drift study, calibration, SHAP, bootstrap confidence intervals, Streamlit dashbo
 | 2026-11-13 | D3, step 4.2 | `uid` adds D1n to the PDD's "card and address fields" | Card and address fields alone merge many cards into one; D1n stays constant per card (Deotte, 2019) |
 | 2026-11-13 | D2, step 7.1 | Early stopping uses the end of the training window, not block 4 | Keeps block 4 unseen by both models, so the RQ1 gap is not biased towards LightGBM |
 | 2026-11-13 | Scope | PSI screen and card-level metrics moved to M3 | Keeps M2 simple |
+| 2026-11-14 | Step 2.1 | Also edits configs/config.yaml and tests/test_make_dataset.py | Split settings belong in config (no magic numbers); stage 1 now needs TransactionDT, which the old synthetic test CSV did not have |
 
 ## Run log
 Filled in from real runs: row counts, memory, per-block counts, timings, best iteration.
@@ -102,3 +103,5 @@ Filled in from real runs: row counts, memory, per-block counts, timings, best it
 | Date | Step | Result |
 |---|---|---|
 | 2026-11-14 | 1.2 | train_transaction: 590,540 × 394, 2,101 MB → 873 MB after downcast. train_identity: 144,233 × 41, 158 MB → 17 MB. Merged: 590,540 × 434, 936 MB in memory, 76 MB parquet on disk; 399 float32, 31 category, 4 int64 columns. All 144,233 identity rows matched a transaction. Stage 1 took 62 s; the parquet reloads in 0.5 s. |
+| 2026-11-14 | Phase 1 check | `pytest -q`: 11 passed in 0.9 s (.venv, Python 3.11.4). Stage 1 rerun from the raw CSVs gave the same shapes and memory as step 1.2, in 61 s. Parquet: 590,540 × 434, TransactionID unique, TransactionDT already ascending, 182 distinct days (day 0–181); reloads in 0.4 s. |
+| 2026-11-14 | 2.1 | 585,047 rows kept; the incomplete block 7 (days 180–181, 5,493 rows) dropped. Rows per block: 1: 134,339, 2: 89,399, 3: 92,189, 4: 98,615, 5: 83,571, 6: 86,934. Train: 294,193 rows, days 0–82 (21,734 gap rows on days 83–89 unused). Tune: 98,615 rows, days 90–119. Leakage check passed. train_blocked.parquet is 75 MB. Stage 1 now takes 59–75 s. Peak memory 7.0 GB, reached while reading the CSV; the blocking step does not raise it. |

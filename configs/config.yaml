@@ -15,3 +15,11 @@ files:
   transaction: train_transaction.csv
   identity: train_identity.csv
   merged: train_merged.parquet    # written to interim_dir by src/data/make_dataset.py
+  blocked: train_blocked.parquet  # merged table + day and block columns, incomplete last block dropped
+
+# Time split (src/data/split.py). Blocks are numbered from 1.
+split:
+  block_days: 30            # length of one block in days
+  gap_days: 7               # label delay: training rows end this many days before an evaluation window
+  train_blocks: [1, 2, 3]
+  tune_blocks: [4]          # Milestone 2 validation. Blocks 5-6 are the final test, used only in Milestone 3.
