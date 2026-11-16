@@ -41,7 +41,7 @@ public GitHub repo, demo video (max 6 minutes).
 ## Phase 3: EDA (1–2 sessions)
 | Step | Goal | Files | Checks | Commit | Done |
 |---|---|---|---|---|---|
-| 3.1 | One notebook on training blocks 1–3, using the blocks from `src/data/split.py`: class balance, daily volume and fraud, missingness, transaction amount, a few key categoricals | notebooks/01_eda.ipynb, reports/figures/eda_*.png, requirements.txt (matplotlib, jupyter) | Notebook executes top to bottom; outputs are aggregates only; no rows from blocks 4–6 | `analysis: add EDA on training blocks 1-3` | [ ] |
+| 3.1 | One notebook on training blocks 1–3, using the blocks from `src/data/split.py`: class balance, daily volume and fraud, missingness, transaction amount, a few key categoricals | notebooks/01_eda.ipynb, reports/figures/eda_*.png, requirements.txt (matplotlib, jupyter) | Notebook executes top to bottom; outputs are aggregates only; no rows from blocks 4–6 | `analysis: add EDA on training blocks 1-3` | [x] |
 | 3.2 [author] | Write the findings and the preprocessing decisions, including the missingness threshold | notebooks/01_eda.ipynb | Quoted numbers match the outputs | `docs(eda): add EDA findings and preprocessing decisions` | [ ] |
 
 ## Phase 4: Preprocessing (2–3 sessions)
@@ -96,6 +96,8 @@ drift study, calibration, SHAP, bootstrap confidence intervals, Streamlit dashbo
 | 2026-11-13 | D2, step 7.1 | Early stopping uses the end of the training window, not block 4 | Keeps block 4 unseen by both models, so the RQ1 gap is not biased towards LightGBM |
 | 2026-11-13 | Scope | PSI screen and card-level metrics moved to M3 | Keeps M2 simple |
 | 2026-11-14 | Step 2.1 | Also edits configs/config.yaml and tests/test_make_dataset.py | Split settings belong in config (no magic numbers); stage 1 now needs TransactionDT, which the old synthetic test CSV did not have |
+| 2026-11-15 | Step 3.1 | EDA uses the `time_split` training rows (days 0–82), not all of blocks 1–3 (the gap days 83–89 are left out) | These are the exact rows the models and the train-only column pruning (step 4.4) are fitted on, so the threshold chosen in 3.2 is based on the same data |
+| 2026-11-15 | Step 3.1 | requirements.txt pins `ipykernel` and `nbconvert` instead of `jupyter` | The `jupyter` metapackage is not installed; these are the two parts the step uses (running the notebook and executing it from the command line) |
 
 ## Run log
 Filled in from real runs: row counts, memory, per-block counts, timings, best iteration.
@@ -105,3 +107,4 @@ Filled in from real runs: row counts, memory, per-block counts, timings, best it
 | 2026-11-14 | 1.2 | train_transaction: 590,540 × 394, 2,101 MB → 873 MB after downcast. train_identity: 144,233 × 41, 158 MB → 17 MB. Merged: 590,540 × 434, 936 MB in memory, 76 MB parquet on disk; 399 float32, 31 category, 4 int64 columns. All 144,233 identity rows matched a transaction. Stage 1 took 62 s; the parquet reloads in 0.5 s. |
 | 2026-11-14 | Phase 1 check | `pytest -q`: 11 passed in 0.9 s (.venv, Python 3.11.4). Stage 1 rerun from the raw CSVs gave the same shapes and memory as step 1.2, in 61 s. Parquet: 590,540 × 434, TransactionID unique, TransactionDT already ascending, 182 distinct days (day 0–181); reloads in 0.4 s. |
 | 2026-11-14 | 2.1 | 585,047 rows kept; the incomplete block 7 (days 180–181, 5,493 rows) dropped. Rows per block: 1: 134,339, 2: 89,399, 3: 92,189, 4: 98,615, 5: 83,571, 6: 86,934. Train: 294,193 rows, days 0–82 (21,734 gap rows on days 83–89 unused). Tune: 98,615 rows, days 90–119. Leakage check passed. train_blocked.parquet is 75 MB. Stage 1 now takes 59–75 s. Peak memory 7.0 GB, reached while reading the CSV; the blocking step does not raise it. |
+| 2026-11-15 | 3.1 | EDA on 294,193 training rows (days 0–82): 9,854 frauds (3.35%); by block 2.53% / 4.00% / 4.08%. 371 of 434 columns have missing values; columns above 50/75/90/95/99% missing: 230/77/12/9/0. Notebook executes top to bottom in ~11 s; 4 figures in reports/figures/. |

@@ -6,6 +6,11 @@ numpy==2.2.6                  # arrays, seeding
 pyyaml==6.0.2                 # reads configs/config.yaml
 pandas==2.2.3                 # tables: read CSVs, downcast, join
 pyarrow==20.0.0               # parquet read/write for the cached tables
+matplotlib==3.10.3            # figures saved to reports/figures/
+
+# --- Notebooks ---
+ipykernel==6.29.5             # runs the notebooks (VS Code or Jupyter)
+nbconvert==7.17.2             # executes a notebook top to bottom from the command line
 
 # --- Testing ---
 pytest==8.3.5
