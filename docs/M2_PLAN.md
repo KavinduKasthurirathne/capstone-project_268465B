@@ -42,7 +42,7 @@ public GitHub repo, demo video (max 6 minutes).
 | Step | Goal | Files | Checks | Commit | Done |
 |---|---|---|---|---|---|
 | 3.1 | One notebook on training blocks 1–3, using the blocks from `src/data/split.py`: class balance, daily volume and fraud, missingness, transaction amount, a few key categoricals | notebooks/01_eda.ipynb, reports/figures/eda_*.png, requirements.txt (matplotlib, jupyter) | Notebook executes top to bottom; outputs are aggregates only; no rows from blocks 4–6 | `analysis: add EDA on training blocks 1-3` | [x] |
-| 3.2 [author] | Write the findings and the preprocessing decisions, including the missingness threshold | notebooks/01_eda.ipynb | Quoted numbers match the outputs | `docs(eda): add EDA findings and preprocessing decisions` | [ ] |
+| 3.2 [author] | Write the findings and the preprocessing decisions, including the missingness threshold | notebooks/01_eda.ipynb | Quoted numbers match the outputs | `docs(eda): add EDA findings and preprocessing decisions` | [x] |
 
 ## Phase 4: Preprocessing (2–3 sessions)
 | Step | Goal | Files | Checks | Commit | Done |
@@ -98,6 +98,8 @@ drift study, calibration, SHAP, bootstrap confidence intervals, Streamlit dashbo
 | 2026-11-14 | Step 2.1 | Also edits configs/config.yaml and tests/test_make_dataset.py | Split settings belong in config (no magic numbers); stage 1 now needs TransactionDT, which the old synthetic test CSV did not have |
 | 2026-11-15 | Step 3.1 | EDA uses the `time_split` training rows (days 0–82), not all of blocks 1–3 (the gap days 83–89 are left out) | These are the exact rows the models and the train-only column pruning (step 4.4) are fitted on, so the threshold chosen in 3.2 is based on the same data |
 | 2026-11-15 | Step 3.1 | requirements.txt pins `ipykernel` and `nbconvert` instead of `jupyter` | The `jupyter` metapackage is not installed; these are the two parts the step uses (running the notebook and executing it from the command line) |
+| 2026-11-19 | Step 3.2 | Drafted by the AI assistant instead of the author; reviewed by the author before commit | Author's time constraint, at the author's request |
+| 2026-11-19 | Step 3.2 | Also adds two notebook outputs: a frauds-per-day column in the daily summary and a table of the 30 most-missing columns | So every number quoted in the findings appears in an output |
 
 ## Run log
 Filled in from real runs: row counts, memory, per-block counts, timings, best iteration.
@@ -108,3 +110,4 @@ Filled in from real runs: row counts, memory, per-block counts, timings, best it
 | 2026-11-14 | Phase 1 check | `pytest -q`: 11 passed in 0.9 s (.venv, Python 3.11.4). Stage 1 rerun from the raw CSVs gave the same shapes and memory as step 1.2, in 61 s. Parquet: 590,540 × 434, TransactionID unique, TransactionDT already ascending, 182 distinct days (day 0–181); reloads in 0.4 s. |
 | 2026-11-14 | 2.1 | 585,047 rows kept; the incomplete block 7 (days 180–181, 5,493 rows) dropped. Rows per block: 1: 134,339, 2: 89,399, 3: 92,189, 4: 98,615, 5: 83,571, 6: 86,934. Train: 294,193 rows, days 0–82 (21,734 gap rows on days 83–89 unused). Tune: 98,615 rows, days 90–119. Leakage check passed. train_blocked.parquet is 75 MB. Stage 1 now takes 59–75 s. Peak memory 7.0 GB, reached while reading the CSV; the blocking step does not raise it. |
 | 2026-11-15 | 3.1 | EDA on 294,193 training rows (days 0–82): 9,854 frauds (3.35%); by block 2.53% / 4.00% / 4.08%. 371 of 434 columns have missing values; columns above 50/75/90/95/99% missing: 230/77/12/9/0. Notebook executes top to bottom in ~11 s; 4 figures in reports/figures/. |
+| 2026-11-19 | 3.2 | Missingness threshold: drop columns more than 95% missing in training rows, which drops 9 columns (id_07, id_08, id_21 to id_27, all 98.9–99.0% missing; the next column, D7, is 93.6%). Training period: 118.72 frauds a day on average (median 117, range 51–234). Preprocessing decisions P1–P6 are recorded in the notebook. |
