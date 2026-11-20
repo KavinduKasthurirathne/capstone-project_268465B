@@ -4,21 +4,26 @@ The tables have no isFraud column, which shows the features never use labels.
 """
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.data.split import SECONDS_PER_DAY
-from src.features.engineer import add_time_amount_features
+from src.features.engineer import add_time_amount_features, add_uid
 
 START = 86_400  # the real data also starts at TransactionDT = 86400
 HOUR = 3_600
 
 
 def random_table(n_rows: int, n_days: int, seed: int = 0) -> pd.DataFrame:
-    """n_rows transactions at random seconds over n_days, with long-tailed amounts."""
+    """n_rows transactions at random seconds over n_days, with long-tailed amounts
+    and a few card, address and D1 values (some addresses missing)."""
     rng = np.random.default_rng(seed)
     return pd.DataFrame({
         "TransactionID": np.arange(n_rows),
         "TransactionDT": rng.integers(START, START + n_days * SECONDS_PER_DAY, n_rows),
         "TransactionAmt": rng.lognormal(4, 1.5, n_rows).astype("float32"),
+        "card1": rng.integers(1000, 1005, n_rows),
+        "addr1": rng.choice(np.array([100, 200, np.nan], dtype="float32"), n_rows),
+        "D1": rng.integers(0, 50, n_rows).astype("float32"),
     })
 
 
@@ -54,13 +59,40 @@ def test_values_in_range():
     assert (out["log_amount"] >= 0).all()
 
 
-def test_row_values_do_not_depend_on_other_rows():
+def test_uid_worked_by_hand():
+    day = SECONDS_PER_DAY
+    df = pd.DataFrame({
+        "TransactionID": [1, 2, 3, 4, 5, 6, 7],
+        # TransactionDT // 86400: day 1 or day 11
+        "TransactionDT": [START, START + 10 * day, START + 10 * day, START,
+                          START, START + 10 * day, START],
+        "card1": [1000, 1000, 1000, 2000, 1000, 1000, 1000],
+        "addr1": np.array([100, 100, 100, 100, np.nan, np.nan, 100], dtype="float32"),
+        "D1": np.array([0, 10, 0, 0, 0, 10, np.nan], dtype="float32"),
+    })
+    uid = add_uid(df)["uid"].astype(str).tolist()
+    assert uid[0] == "1000_100_1"      # card started on day 1 - 0 = 1
+    assert uid[1] == uid[0]            # same card 10 days later: D1 has grown by 10
+    assert uid[2] == "1000_100_11"     # same card1 and addr1, but a card that started on day 11
+    assert uid[3] == "2000_100_1"      # different card1
+    assert uid[4] == "1000_<NA>_1"     # missing address is kept as a value ...
+    assert uid[5] == uid[4]            # ... so the same card without an address still matches
+    assert uid[6] == "1000_100_<NA>"   # missing D1
+    assert add_uid(df)["uid"].dtype == "category"  # each distinct text stored once
+
+
+@pytest.mark.parametrize("add, cols", [
+    (add_time_amount_features, ["log_amount", "hour", "weekday"]),
+    (add_uid, ["uid"]),
+])
+def test_row_values_do_not_depend_on_other_rows(add, cols):
     df = random_table(n_rows=200, n_days=30)
-    cols = ["log_amount", "hour", "weekday"]
-    expected = add_time_amount_features(df).set_index("TransactionID")[cols]
+    expected = add(df).set_index("TransactionID")[cols]
+    # check_categorical=False compares uid values; the list of categories itself
+    # depends on which rows are in the table.
     # Shuffling the rows does not change any row's values.
-    shuffled = add_time_amount_features(df.sample(frac=1, random_state=0)).set_index("TransactionID")
-    pd.testing.assert_frame_equal(shuffled[cols].sort_index(), expected)
+    shuffled = add(df.sample(frac=1, random_state=0)).set_index("TransactionID")
+    pd.testing.assert_frame_equal(shuffled[cols].sort_index(), expected, check_categorical=False)
     # Neither does dropping all rows after the first 50.
-    first_rows = add_time_amount_features(df.head(50)).set_index("TransactionID")
-    pd.testing.assert_frame_equal(first_rows[cols], expected.head(50))
+    first_rows = add(df.head(50)).set_index("TransactionID")
+    pd.testing.assert_frame_equal(first_rows[cols], expected.head(50), check_categorical=False)
