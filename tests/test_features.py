@@ -7,23 +7,29 @@ import pandas as pd
 import pytest
 
 from src.data.split import SECONDS_PER_DAY
-from src.features.engineer import add_time_amount_features, add_uid
+from src.features.engineer import add_card_history, add_time_amount_features, add_uid
 
 START = 86_400  # the real data also starts at TransactionDT = 86400
 HOUR = 3_600
 
 
 def random_table(n_rows: int, n_days: int, seed: int = 0) -> pd.DataFrame:
-    """n_rows transactions at random seconds over n_days, with long-tailed amounts
-    and a few card, address and D1 values (some addresses missing)."""
+    """n_rows transactions in time order over n_days, as in the real data, with
+    long-tailed amounts, a few cards and some missing addresses.
+
+    D1 is set so every card started on day 0 or day 1. That gives 5 x 3 x 2 = 30
+    possible uids, so each card comes back several times and has a history.
+    """
     rng = np.random.default_rng(seed)
+    seconds = np.sort(rng.integers(START, START + n_days * SECONDS_PER_DAY, n_rows))
+    card_start_day = rng.integers(0, 2, n_rows)
     return pd.DataFrame({
-        "TransactionID": np.arange(n_rows),
-        "TransactionDT": rng.integers(START, START + n_days * SECONDS_PER_DAY, n_rows),
+        "TransactionID": np.arange(n_rows),  # rises in time order, as in the real data
+        "TransactionDT": seconds,
         "TransactionAmt": rng.lognormal(4, 1.5, n_rows).astype("float32"),
         "card1": rng.integers(1000, 1005, n_rows),
         "addr1": rng.choice(np.array([100, 200, np.nan], dtype="float32"), n_rows),
-        "D1": rng.integers(0, 50, n_rows).astype("float32"),
+        "D1": (seconds // SECONDS_PER_DAY - card_start_day).astype("float32"),
     })
 
 
@@ -81,18 +87,41 @@ def test_uid_worked_by_hand():
     assert add_uid(df)["uid"].dtype == "category"  # each distinct text stored once
 
 
+def test_card_history_worked_by_hand():
+    df = pd.DataFrame({
+        "TransactionID": [1, 2, 3, 4, 5, 6],
+        "TransactionDT": [START, START + 100, START + 100, START + 400, START + 1000, START + 1000],
+        "TransactionAmt": np.array([10, 50, 20, 30, 60, 5], dtype="float32"),
+        "uid": pd.Series(["A", "B", "A", "B", "A", "A"], dtype="category"),
+    })
+    # Feed the rows in reverse order: the function must sort them by time itself.
+    out = add_card_history(df.iloc[::-1]).sort_values("TransactionID")
+    # Card A: 10 at t=0, 20 at t=100, 60 and 5 both at t=1000 (ID 5 counts as before ID 6).
+    # Card B: 50 at t=100, 30 at t=400.
+    assert out["card_prev_count"].tolist() == [0, 0, 1, 1, 2, 3]
+    np.testing.assert_allclose(out["card_prev_mean_amount"],
+                               [np.nan, np.nan, 10, 50, 15, 30])  # 15 = (10+20)/2, 30 = (10+20+60)/3
+    np.testing.assert_allclose(out["card_secs_since_prev"],
+                               [np.nan, np.nan, 100, 300, 900, 0])
+    assert out["card_prev_count"].dtype == "int32"
+    assert out["card_prev_mean_amount"].dtype == "float32"
+    assert out["card_secs_since_prev"].dtype == "float32"
+
+
 @pytest.mark.parametrize("add, cols", [
     (add_time_amount_features, ["log_amount", "hour", "weekday"]),
     (add_uid, ["uid"]),
+    (add_card_history, ["card_prev_count", "card_prev_mean_amount", "card_secs_since_prev"]),
 ])
-def test_row_values_do_not_depend_on_other_rows(add, cols):
-    df = random_table(n_rows=200, n_days=30)
+def test_values_do_not_depend_on_row_order_or_later_rows(add, cols):
+    df = add_uid(random_table(n_rows=200, n_days=30))  # card history needs uid
     expected = add(df).set_index("TransactionID")[cols]
     # check_categorical=False compares uid values; the list of categories itself
     # depends on which rows are in the table.
     # Shuffling the rows does not change any row's values.
     shuffled = add(df.sample(frac=1, random_state=0)).set_index("TransactionID")
     pd.testing.assert_frame_equal(shuffled[cols].sort_index(), expected, check_categorical=False)
-    # Neither does dropping all rows after the first 50.
+    # Prefix test: the table is in time order, so its first 50 rows are the 50
+    # earliest. Dropping every later row does not change their values.
     first_rows = add(df.head(50)).set_index("TransactionID")
     pd.testing.assert_frame_equal(first_rows[cols], expected.head(50), check_categorical=False)

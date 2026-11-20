@@ -1,14 +1,16 @@
 """Engineered features for each transaction.
 
-The features here use only the transaction's own values, so a row's features
-do not depend on which other rows are in the table or on their order. That
-rules out leakage from future rows by construction. isFraud is never read.
+Most features here use only the transaction's own values. The card history
+features also use the same card's EARLIER transactions, never later ones. So no
+feature can see the future, and none depends on the order of the rows in the
+table. isFraud is never read.
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
+from src.data.load import KEY
 from src.data.split import SECONDS_PER_DAY, TIME
 
 # Fixed facts about the dataset and the calendar, not settings.
@@ -66,3 +68,36 @@ def add_uid(df: pd.DataFrame) -> pd.DataFrame:
                             for s in (df[CARD], df[ADDRESS], card_start))
     uid = card + "_" + address + "_" + start
     return df.assign(uid=uid.astype("category"))
+
+
+def add_card_history(df: pd.DataFrame) -> pd.DataFrame:
+    """Add card_prev_count, card_prev_mean_amount and card_secs_since_prev.
+
+    Each value describes the same card's (uid's) transactions BEFORE this one,
+    because a model in use only knows the past. "Before" means an earlier
+    TransactionDT, or the same second and a smaller TransactionID (IDs rise in
+    time order). A row never counts in its own history. On a card's first
+    transaction the count is 0 and the other two are NaN: there is no earlier
+    amount or time to use, and "card not seen before" is itself a signal.
+
+    Run this on all the rows up to the evaluation window together, before the
+    split, so evaluation rows still see their card's earlier transactions. That
+    is not leakage: a transaction is known when it happens, and only its label
+    is delayed.
+
+    Only the four columns needed are sorted, not the whole table. assign puts
+    the results back by row label, so the input can be in any order.
+    """
+    # float64 so the running total over a long card history stays exact enough.
+    rows = df[[TIME, KEY, "uid", AMOUNT]].astype({AMOUNT: "float64"}).sort_values([TIME, KEY])
+    card = rows.groupby("uid", observed=True)
+    count = card.cumcount()  # 0, 1, 2, ... = earlier rows of the same card
+    # Running total up to and including this row, minus this row = total of the earlier rows.
+    earlier_total = card[AMOUNT].cumsum() - rows[AMOUNT]
+    mean_earlier = (earlier_total / count).where(count > 0)
+    secs_since_prev = rows[TIME] - card[TIME].shift()
+    return df.assign(
+        card_prev_count=count.astype("int32"),
+        card_prev_mean_amount=mean_earlier.astype("float32"),
+        card_secs_since_prev=secs_since_prev.astype("float32"),
+    )
