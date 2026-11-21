@@ -16,6 +16,10 @@ files:
   identity: train_identity.csv
   merged: train_merged.parquet    # written to interim_dir by src/data/make_dataset.py
   blocked: train_blocked.parquet  # merged table + day and block columns, incomplete last block dropped
+  # Written to processed_dir by src/features/build_features.py (stage 2):
+  train_features: train_features.parquet    # training rows: blocks 1-3 minus the gap days
+  tune_features: tune_features.parquet      # block 4, Milestone 2 validation
+  preprocess_state: preprocess_state.json   # dropped columns, frequency tables and feature list, fitted on the training rows
 
 # Time split (src/data/split.py). Blocks are numbered from 1.
 split:
