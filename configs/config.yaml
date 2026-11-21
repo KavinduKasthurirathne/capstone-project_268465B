@@ -23,3 +23,7 @@ split:
   gap_days: 7               # label delay: training rows end this many days before an evaluation window
   train_blocks: [1, 2, 3]
   tune_blocks: [4]          # Milestone 2 validation. Blocks 5-6 are the final test, used only in Milestone 3.
+
+# Preprocessing (src/features/preprocess.py), fitted on training rows only.
+preprocess:
+  max_missing: 0.95         # drop a column when MORE than this share of its training values is missing (EDA decision P3)
