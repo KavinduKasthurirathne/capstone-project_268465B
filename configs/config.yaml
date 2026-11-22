@@ -31,3 +31,7 @@ split:
 # Preprocessing (src/features/preprocess.py), fitted on training rows only.
 preprocess:
   max_missing: 0.95         # drop a column when MORE than this share of its training values is missing (EDA decision P3)
+
+# Evaluation (src/evaluation/), from the PDD.
+evaluation:
+  budgets: [30, 60, 100, 150]   # daily alert budgets k: how many alerts the analyst team can review per day
