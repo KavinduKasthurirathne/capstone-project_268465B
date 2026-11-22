@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.evaluation.metrics import daily_metrics, summarise_days
+from src.evaluation.metrics import budget_results, daily_metrics, ranking_metrics, summarise_days
 from src.evaluation.policy import top_k_per_day
 from src.utils.config import load_config
 
@@ -92,3 +92,54 @@ def test_amounts_are_added_up_in_float64():
     # float() first: NumPy compares a plain number with a float32 in float32,
     # where 16,777,217 also rounds to 16,777,216, so the check would always pass.
     assert float(daily.loc[0, "amount_caught"]) == 16_777_217
+
+
+def labelled(is_fraud: list[int], score: list[float]) -> pd.DataFrame:
+    return pd.DataFrame({"isFraud": is_fraud, "score": score})
+
+
+def test_ranking_metrics_worked_by_hand():
+    # Going down the list: fraud (precision 1/1), genuine, fraud (precision 2/3), genuine.
+    # Average precision = mean of the precision at each fraud = (1 + 2/3) / 2 = 0.833.
+    # Fraud vs genuine pairs: 0.9 > 0.8, 0.9 > 0.6, 0.7 < 0.8, 0.7 > 0.6, so ROC-AUC = 3/4.
+    out = ranking_metrics(labelled([1, 0, 1, 0], [0.9, 0.8, 0.7, 0.6]))
+    assert out["pr_auc"] == pytest.approx(5 / 6)
+    assert out["roc_auc"] == pytest.approx(0.75)
+
+
+def test_perfect_and_reversed_ranking():
+    perfect = ranking_metrics(labelled([1, 1, 0, 0, 0], [0.9, 0.8, 0.3, 0.2, 0.1]))
+    assert perfect == {"pr_auc": 1.0, "roc_auc": 1.0}
+    reversed_ = ranking_metrics(labelled([0, 0, 1, 1, 1], [0.9, 0.8, 0.3, 0.2, 0.1]))
+    assert reversed_["roc_auc"] == 0.0
+
+
+def test_uninformative_score_gives_half_roc_but_only_fraud_rate_pr():
+    # Every row has the same score, so the ranking carries no information.
+    out = ranking_metrics(labelled([1, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.5] * 10))
+    assert out["roc_auc"] == pytest.approx(0.5)
+    assert out["pr_auc"] == pytest.approx(0.1)  # the fraud rate, 1 in 10
+
+
+@pytest.mark.parametrize("one_class", [[0, 0, 0], [1, 1, 1]])
+def test_ranking_metrics_need_both_classes(one_class):
+    with pytest.raises(ValueError, match="both fraud and genuine"):
+        ranking_metrics(labelled(one_class, [0.9, 0.5, 0.1]))
+
+
+def test_budget_results_has_one_row_per_k_matching_direct_calls():
+    rng = np.random.default_rng(0)
+    n = 600  # 3 days of 200 rows
+    df = pd.DataFrame({
+        "TransactionID": np.arange(n),
+        "day": np.repeat([0, 1, 2], 200),
+        "isFraud": (rng.random(n) < 0.1).astype("int64"),
+        "TransactionAmt": rng.lognormal(4, 1, n).astype("float32"),
+        "score": rng.random(n).astype("float32"),
+    })
+    ev = load_config()["evaluation"]
+    table = budget_results(df, ev["budgets"], ev["review_cost"])
+    assert table["k"].tolist() == ev["budgets"]
+    for k in ev["budgets"]:
+        direct = summarise_days(daily_metrics(df, top_k_per_day(df, k), ev["review_cost"]))
+        assert table.set_index("k").loc[k].to_dict() == pytest.approx(direct)
