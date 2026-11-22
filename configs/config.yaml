@@ -35,3 +35,4 @@ preprocess:
 # Evaluation (src/evaluation/), from the PDD.
 evaluation:
   budgets: [30, 60, 100, 150]   # daily alert budgets k: how many alerts the analyst team can review per day
+  review_cost: 5                # cost of reviewing one alert, in dollars like TransactionAmt (D6). Swept in Milestone 3.
