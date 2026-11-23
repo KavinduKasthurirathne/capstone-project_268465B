@@ -32,6 +32,13 @@ split:
 preprocess:
   max_missing: 0.95         # drop a column when MORE than this share of its training values is missing (EDA decision P3)
 
+# Logistic regression baseline (src/models/baseline.py), fitted on training rows only.
+baseline:
+  max_onehot_levels: 10     # one-hot a text column only if it has at most this many distinct training values (missing counts as one); others keep only their _freq column
+  C: 1.0                    # inverse strength of the L2 penalty (scikit-learn's default); not tuned in M2, so block 4 stays unseen by both models (as in D2)
+  solver: newton-cholesky   # Newton's method on the full curvature matrix; suits many more rows (294k) than inputs (842). lbfgs did not converge in 1000 iterations on the real training rows
+  max_iter: 100             # iteration limit (scikit-learn's default); newton-cholesky needed 8 on the real training rows
+
 # Evaluation (src/evaluation/), from the PDD.
 evaluation:
   budgets: [30, 60, 100, 150]   # daily alert budgets k: how many alerts the analyst team can review per day
