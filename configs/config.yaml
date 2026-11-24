@@ -23,6 +23,8 @@ files:
   # Written by src/models/train.py (stage 3); {model} is the --model name:
   results: results_{model}.csv      # to reports_dir: validation results on block 4, one row per budget k
   scores: scores_{model}.parquet    # to processed_dir: block-4 scores, reused by the comparison in step 8.1
+  # Written by src/evaluation/compare.py (step 8.1):
+  comparison: m2_comparison.md      # to reports_dir: baseline vs LightGBM table on block 4; generated, so safe to rerun
 
 # Time split (src/data/split.py). Blocks are numbered from 1.
 split:
@@ -55,3 +57,11 @@ lgbm:
 evaluation:
   budgets: [30, 60, 100, 150]   # daily alert budgets k: how many alerts the analyst team can review per day
   review_cost: 5                # cost of reviewing one alert, in dollars like TransactionAmt (D6). Swept in Milestone 3.
+
+# Baseline vs LightGBM comparison on block 4 (src/evaluation/compare.py, step 8.1).
+compare:
+  daily_k: 100                  # budget shown day by day in the daily precision figure
+  figures:                      # written to figures_dir
+    precision_at_k: m2_precision_at_k.png     # mean daily precision@k against k
+    daily_precision: m2_daily_precision.png   # precision@daily_k on each day of block 4
+    gaps: m2_gaps.png                         # LightGBM minus baseline: ROC-AUC, PR-AUC and precision@k
