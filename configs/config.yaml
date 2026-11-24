@@ -20,6 +20,9 @@ files:
   train_features: train_features.parquet    # training rows: blocks 1-3 minus the gap days
   tune_features: tune_features.parquet      # block 4, Milestone 2 validation
   preprocess_state: preprocess_state.json   # dropped columns, frequency tables and feature list, fitted on the training rows
+  # Written by src/models/train.py (stage 3); {model} is the --model name:
+  results: results_{model}.csv      # to reports_dir: validation results on block 4, one row per budget k
+  scores: scores_{model}.parquet    # to processed_dir: block-4 scores, reused by the comparison in step 8.1
 
 # Time split (src/data/split.py). Blocks are numbered from 1.
 split:
