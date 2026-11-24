@@ -42,6 +42,15 @@ baseline:
   solver: newton-cholesky   # Newton's method on the full curvature matrix; suits many more rows (294k) than inputs (842). lbfgs did not converge in 1000 iterations on the real training rows
   max_iter: 100             # iteration limit (scikit-learn's default); newton-cholesky needed 8 on the real training rows
 
+# LightGBM (src/models/lgbm.py), fitted on training rows only. Settings are fixed, not tuned on block 4 (D11).
+lgbm:
+  holdout_days: 14          # early stopping is judged on the last 14 days of the training window, after split.gap_days (D2)
+  max_rounds: 2000          # most trees early stopping may choose; a cap, not a target
+  early_stopping_rounds: 100  # stop when holdout average precision has not improved for this many trees
+  learning_rate: 0.05       # how much each new tree corrects the trees before it (LightGBM's default is 0.1)
+  num_leaves: 31            # leaves per tree (LightGBM's default)
+  n_jobs: -1                # threads: -1 = all logical cores. A fixed setting keeps the trees identical between runs on one machine
+
 # Evaluation (src/evaluation/), from the PDD.
 evaluation:
   budgets: [30, 60, 100, 150]   # daily alert budgets k: how many alerts the analyst team can review per day

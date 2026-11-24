@@ -8,6 +8,7 @@ pandas==2.2.3                 # tables: read CSVs, downcast, join
 pyarrow==20.0.0               # parquet read/write for the cached tables
 matplotlib==3.10.3            # figures saved to reports/figures/
 scikit-learn==1.6.1           # PR-AUC and ROC-AUC; logistic regression baseline (step 6.1)
+lightgbm==4.6.0               # gradient-boosted trees, the improved model (step 7.1)
 
 # --- Notebooks ---
 ipykernel==6.29.5             # runs the notebooks (VS Code or Jupyter)
