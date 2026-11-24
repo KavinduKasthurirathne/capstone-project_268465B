@@ -7,7 +7,7 @@ import pytest
 
 from src.evaluation.metrics import budget_results, ranking_metrics
 from src.features.preprocess import fit_preprocessor, transform
-from src.models.train import train_and_evaluate
+from src.models.train import MODELS, train_and_evaluate
 from src.utils.config import load_config
 
 BUDGETS = [2, 5]
@@ -19,6 +19,8 @@ def make_cfg(tmp_path) -> dict:
 
     30 transactions a day. Training rows: days 0-9. A 2-day gap (days 10-11).
     Tune rows ("block 4"): days 12-14. Fraud is more likely when x is high.
+    LightGBM gets a 3-day early-stopping holdout (days 7-9), so its fit part
+    is days 0-4, 2 days before it.
     """
     rng = np.random.default_rng(0)
     day = np.repeat(np.arange(15), 30)
@@ -49,6 +51,7 @@ def make_cfg(tmp_path) -> dict:
                   "scores": "scores_{model}.parquet"},
         "split": {"gap_days": 2, "tune_blocks": [4]},
         "baseline": load_config()["baseline"],
+        "lgbm": {**load_config()["lgbm"], "holdout_days": 3},
         "evaluation": {"budgets": BUDGETS, "review_cost": 5},
     }
 
@@ -59,16 +62,17 @@ def rewrite_tune(cfg: dict, **changes) -> None:
     pd.read_parquet(path).assign(**changes).to_parquet(path, index=False)
 
 
-def test_results_csv_matches_calling_the_metrics_directly(tmp_path):
+@pytest.mark.parametrize("model", MODELS)
+def test_results_csv_matches_calling_the_metrics_directly(tmp_path, model):
     cfg = make_cfg(tmp_path)
-    returned = train_and_evaluate(cfg, "baseline")
-    saved = pd.read_csv(tmp_path / "reports" / "results_baseline.csv")
+    returned = train_and_evaluate(cfg, model)
+    saved = pd.read_csv(tmp_path / "reports" / f"results_{model}.csv")
     pd.testing.assert_frame_equal(saved, returned, check_dtype=False)
     assert saved["k"].tolist() == BUDGETS
-    assert (saved["model"] == "baseline").all()
+    assert (saved["model"] == model).all()
     assert (saved["window"] == "validation (block 4)").all()
     # One score per tune row, all probabilities.
-    scores = pd.read_parquet(tmp_path / "processed" / "scores_baseline.parquet")
+    scores = pd.read_parquet(tmp_path / "processed" / f"scores_{model}.parquet")
     assert len(scores) == 90 and scores["day"].min() == 12
     assert scores["score"].between(0, 1).all()
     # The same numbers as calling steps 5.1-5.3 directly on the saved scores.
@@ -76,16 +80,17 @@ def test_results_csv_matches_calling_the_metrics_directly(tmp_path):
     pd.testing.assert_frame_equal(saved[expected.columns], expected, check_dtype=False)
 
 
-def test_block4_labels_never_reach_the_model(tmp_path):
+@pytest.mark.parametrize("model", MODELS)
+def test_block4_labels_never_reach_the_model(tmp_path, model):
     cfg = make_cfg(tmp_path)
-    before = train_and_evaluate(cfg, "baseline")
-    scores = pd.read_parquet(tmp_path / "processed" / "scores_baseline.parquet")["score"]
+    before = train_and_evaluate(cfg, model)
+    scores = pd.read_parquet(tmp_path / "processed" / f"scores_{model}.parquet")["score"]
     # Flip every block-4 label: the scores stay the same, only the metrics change.
     labels = pd.read_parquet(tmp_path / "processed" / "tune.parquet")["isFraud"]
     rewrite_tune(cfg, isFraud=(1 - labels).astype("int8"))
-    after = train_and_evaluate(cfg, "baseline")
+    after = train_and_evaluate(cfg, model)
     pd.testing.assert_series_equal(
-        pd.read_parquet(tmp_path / "processed" / "scores_baseline.parquet")["score"], scores)
+        pd.read_parquet(tmp_path / "processed" / f"scores_{model}.parquet")["score"], scores)
     assert not before["precision_at_k"].equals(after["precision_at_k"])
 
 

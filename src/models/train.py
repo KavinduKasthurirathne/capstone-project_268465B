@@ -1,12 +1,14 @@
 """Stage 3: fit a model on the training rows, score block 4 and evaluate it.
 
 Run with: python -m src.models.train --model baseline
+     or: python -m src.models.train --model lgbm
 
 It reads the stage 2 tables, which hold blocks 1-4 only, so the final test
 blocks 5-6 are never touched. The model is fitted on the training rows
 (blocks 1-3 minus the gap) and then scores block 4. Block-4 labels are read
 only to evaluate the alerts, never to fit anything, so every number here is a
-Milestone 2 *validation* result. Step 7.1 adds LightGBM to the same script.
+Milestone 2 *validation* result. Both models go through the same evaluation
+code, so their results tables can be compared row by row (RQ1).
 """
 from __future__ import annotations
 
@@ -25,23 +27,34 @@ from src.evaluation.policy import DAY, SCORE
 from src.features.engineer import AMOUNT
 from src.features.preprocess import LABEL
 from src.models.baseline import fit_baseline, one_hot_columns
+from src.models.lgbm import fit_lgbm
 from src.utils.config import load_config, set_seed
 
 logger = logging.getLogger(__name__)
 
-MODELS = ["baseline"]
+MODELS = ["baseline", "lgbm"]
 # Besides the score, the policy and metrics need the ID (tie-break), day, label and raw amount.
 EVAL_COLUMNS = [KEY, DAY, LABEL, AMOUNT]
 
 
-def fit_model(name: str, train: pd.DataFrame, state: dict, cfg: dict):
-    """Fit the named model on the training rows and return it."""
+def fit_model(name: str, train: pd.DataFrame, state: dict, cfg: dict) -> tuple[object, list[str]]:
+    """Fit the named model on the training rows.
+
+    Returns the model and the columns it scores from. Both models use the same
+    numeric features; the baseline also one-hot encodes its low-cardinality
+    text columns. LightGBM refuses a table with extra columns, so each model is
+    given exactly its own columns, never the ID, label or raw amount.
+    """
+    features = state["features"]
     if name == "baseline":
         one_hot = one_hot_columns(train, list(state["freq"]), cfg["baseline"]["max_onehot_levels"])
-        model = fit_baseline(train, state["features"], one_hot, cfg["baseline"], cfg["seed"])
+        model = fit_baseline(train, features, one_hot, cfg["baseline"], cfg["seed"])
         logger.info("baseline: %d one-hot columns, converged in %d iterations",
                     len(one_hot), model.named_steps["classifier"].n_iter_[0])
-        return model
+        return model, features + one_hot
+    if name == "lgbm":
+        model = fit_lgbm(train, features, cfg["lgbm"], cfg["split"]["gap_days"], cfg["seed"])
+        return model, features
     raise ValueError(f"Unknown model {name!r}; choose from {MODELS}")
 
 
@@ -65,11 +78,11 @@ def train_and_evaluate(cfg: dict, name: str) -> pd.DataFrame:
                 len(tune), tune[DAY].min(), tune[DAY].max())
 
     start = time.perf_counter()
-    model = fit_model(name, train, state, cfg)
+    model, columns = fit_model(name, train, state, cfg)
     logger.info("fitted %s in %.0f s", name, time.perf_counter() - start)
     del train  # the fitted model holds everything still needed from it
 
-    scored = tune[EVAL_COLUMNS].assign(**{SCORE: model.predict_proba(tune)[:, 1]})
+    scored = tune[EVAL_COLUMNS].assign(**{SCORE: model.predict_proba(tune[columns])[:, 1]})
     del tune
     evaluation = cfg["evaluation"]
     results = budget_results(scored, evaluation["budgets"], evaluation["review_cost"])
